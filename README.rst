@@ -3,9 +3,10 @@
 **Forked by Eana Hufwe**
 
 Changes:
-- Add support to image directives with both ``alt`` and ``target`` attributes.
-- Add support to links with inline references.
-- Fix for dealing trailing spaces in literal emphasis
+
+* Add support to image directives with both ``alt`` and ``target`` attributes.
+* Add support to links with inline references.
+* Fix for dealing trailing spaces in literal emphasis
 
 Changes are adapted from steinwurf_ and fritzlabs_.
 
