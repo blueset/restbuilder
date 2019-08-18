@@ -89,7 +89,7 @@ class RstTranslator(TextTranslator):
         content = self.states.pop()
         maxindent = sum(self.stateindent)
         indent = self.stateindent.pop()
-        indent_size = STDINDENT if not first else len(first)
+        indent_size = MAXWIDTH-maxindent if not first else len(first)
         result = []
         toformat = []
 
@@ -98,7 +98,7 @@ class RstTranslator(TextTranslator):
                 return
             if wrap:
                 res = self.wrap(''.join(toformat),
-                                width=MAXWIDTH-maxindent, indent=indent_size)
+                                width=indent_size)
             else:
                 res = ''.join(toformat).splitlines()
             if end:
