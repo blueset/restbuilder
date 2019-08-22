@@ -97,7 +97,7 @@ class RstTranslator(TextTranslator):
         width = MAXWIDTH - (
             maxindent if not first else column_width(first)
             )
-        print("\nend-state -----\n", content)
+        # print("\nend-state -----\n", content)
         result = []
         toformat = []
 
@@ -695,7 +695,11 @@ class RstTranslator(TextTranslator):
         self.end_state()
 
     def visit_literal_block(self, node):
-        self.add_text("::")
+        # import pdb; pdb.set_trace()
+        if node['lanugage'] != "default":
+            self.add_text(".. code:: " + node['language'])
+        else:
+            self.add_text("::")
         self.new_state(self.indent)
 
     def depart_literal_block(self, node):
