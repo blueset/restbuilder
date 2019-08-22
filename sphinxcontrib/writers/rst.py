@@ -12,10 +12,12 @@ from __future__ import (print_function, unicode_literals, absolute_import)
 
 import os
 import sys
+import re
 import textwrap
 import logging
 
 from docutils import nodes, writers
+from docutils.utils import column_width
 
 from sphinx import addnodes
 from sphinx.locale import admonitionlabels, versionlabels, _
@@ -42,6 +44,9 @@ class RstWriter(writers.Writer):
 class RstTranslator(TextTranslator):
     sectionchars = '*=-~"+`'
 
+    end_with_text = re.compile(r"\w$")
+    starts_with_text = re.compile(r"^\w")
+
     def __init__(self, document, builder):
         TextTranslator.__init__(self, document, builder)
 
@@ -63,7 +68,7 @@ class RstTranslator(TextTranslator):
         else:
             self.indent = STDINDENT
         self.wrapper = textwrap.TextWrapper(
-            width=STDINDENT, break_long_words=False, break_on_hyphens=False)
+            width=MAXWIDTH, break_long_words=False, break_on_hyphens=False)
 
     def log_unknown(self, type, node):
         logger = logging.getLogger("sphinxcontrib.writers.rst")
@@ -74,7 +79,7 @@ class RstTranslator(TextTranslator):
             logger = logging.getLogger("sphinxcontrib.writers.rst")
         logger.warning("%s(%s) unsupported formatting" % (type, node))
 
-    def wrap(self, text, width=STDINDENT):
+    def wrap(self, text, width=MAXWIDTH):
         self.wrapper.width = width
         return self.wrapper.wrap(text)
 
@@ -89,7 +94,9 @@ class RstTranslator(TextTranslator):
         content = self.states.pop()
         maxindent = sum(self.stateindent)
         indent = self.stateindent.pop()
-        indent_size = MAXWIDTH-maxindent if not first else len(first)
+        width = MAXWIDTH - (
+            maxindent if not first else column_width(first)
+            )
         result = []
         toformat = []
 
@@ -98,7 +105,7 @@ class RstTranslator(TextTranslator):
                 return
             if wrap:
                 res = self.wrap(''.join(toformat),
-                                width=indent_size)
+                                width=width)
             else:
                 res = ''.join(toformat).splitlines()
             if end:
@@ -183,7 +190,7 @@ class RstTranslator(TextTranslator):
             char = '^'
         text = ''.join(x[1] for x in self.states.pop() if x[0] == -1)
         self.stateindent.pop()
-        self.states[-1].append((0, ['', text, '%s' % (char * len(text)), '']))
+        self.states[-1].append((0, ['', text, '%s' % (char * column_width(text)), '']))
 
     def visit_subtitle(self, node):
         # self.log_unknown("subtitle", node)
@@ -549,7 +556,7 @@ class RstTranslator(TextTranslator):
     def visit_list_item(self, node):
         if self.list_counter[-1] == -1:
             # bullet list
-            self.new_state(self.indent)
+            self.new_state(2)
         elif self.list_counter[-1] == -2:
             # definition list
             pass
@@ -713,7 +720,6 @@ class RstTranslator(TextTranslator):
         pass
 
     def visit_block_quote(self, node):
-        self.add_text('..')
         self.new_state(self.indent)
 
     def depart_block_quote(self, node):
@@ -790,15 +796,23 @@ class RstTranslator(TextTranslator):
         Finally, all other links are also converted to an inline link
         format.
         """
+        prev_node = self.prev_node(node)
+        if self.end_with_text.search(prev_node):
+            self.add_text('\ ')
+        next_node = node.next_node(descend=False, siblings=True)
+        escape_end = next_node and self.starts_with_text.match(next_node.astext())
         if 'refid' in node and 'internal' in node:
             # Here we use the approach shown here:
             # https://stackoverflow.com/a/34991777/1717320
             self.add_text('`{} <{}_>`_'.format(node.astext(), node['refid']))
-            print(node)
+            if escape_end:
+                self.add_text('\ ')
             raise nodes.SkipNode
 
         elif 'refuri' not in node:
             self.add_text('`%s`_' % node['name'])
+            if escape_end:
+                self.add_text('\ ')
             raise nodes.SkipNode
         elif not isinstance(node.parent, nodes.TextElement):
             # We have an image
@@ -812,6 +826,8 @@ class RstTranslator(TextTranslator):
                 self.add_text('`%s <%s>`_' % (node['name'], node['refuri']))
             else:
                 self.add_text(node['refuri'])
+            if escape_end:
+                self.add_text('\ ')
             raise nodes.SkipNode
         elif 'reftitle' in node:
             # Include node as text, rather than with markup.
@@ -819,9 +835,13 @@ class RstTranslator(TextTranslator):
             # Hence we revert to the more simple `literal <url>`_
             self.add_text('`%s <%s>`_' % (node.astext(), node['refuri']))
             # self.end_state(wrap=False)
+            if escape_end:
+                self.add_text('\ ')
             raise nodes.SkipNode
         else:
             self.add_text('`%s <%s>`_' % (node.astext(), node['refuri']))
+            if escape_end:
+                self.add_text('\ ')
             raise nodes.SkipNode
 
     def depart_reference(self, node):
@@ -841,22 +861,39 @@ class RstTranslator(TextTranslator):
         pass
 
     def visit_emphasis(self, node):
+        prev_node = self.prev_node(node)
+        if self.end_with_text.search(prev_node):
+            self.add_text('\ ')
         self.add_text('*')
 
     def depart_emphasis(self, node):
+        next_node = node.next_node(descend=False, siblings=True)
         self.add_text('*')
+        if next_node and self.starts_with_text.match(next_node):
+            self.add_text('\ ')
 
     def visit_literal_emphasis(self, node):
+        prev_node = self.prev_node(node)
+        if self.end_with_text.search(prev_node):
+            self.add_text('\ ')
         self.add_text('*')
 
     def depart_literal_emphasis(self, node):
+        next_node = node.next_node(descend=False, siblings=True)
         self.add_text('*')
+        if next_node and self.starts_with_text.match(next_node):
+            self.add_text('\ ')
 
     def visit_strong(self, node):
+        prev_node = self.prev_node(node)
+        if self.end_with_text.search(prev_node):
+            self.add_text('\ ')
         self.add_text('**')
-
     def depart_strong(self, node):
+        next_node = node.next_node(descend=False, siblings=True)
         self.add_text('**')
+        if next_node and self.starts_with_text.match(next_node):
+            self.add_text('\ ')
 
     def visit_abbreviation(self, node):
         self.add_text('')
@@ -867,16 +904,28 @@ class RstTranslator(TextTranslator):
 
     def visit_title_reference(self, node):
         # self.log_unknown("title_reference", node)
+        prev_node = self.prev_node(node)
+        if self.end_with_text.search(prev_node):
+            self.add_text('\ ')
         self.add_text('*')
 
     def depart_title_reference(self, node):
+        next_node = node.next_node(descend=False, siblings=True)
         self.add_text('*')
+        if next_node and self.starts_with_text.match(next_node):
+            self.add_text('\ ')
 
     def visit_literal(self, node):
+        prev_node = self.prev_node(node)
+        if self.end_with_text.search(prev_node):
+            self.add_text('\ ')
         self.add_text('``')
 
     def depart_literal(self, node):
+        next_node = node.next_node(descend=False, siblings=True)
         self.add_text('``')
+        if next_node and self.starts_with_text.match(next_node):
+            self.add_text('\ ')
 
     def visit_subscript(self, node):
         self.add_text('_')
@@ -944,3 +993,12 @@ class RstTranslator(TextTranslator):
 
     def unknown_visit(self, node):
         raise NotImplementedError('Unknown node: ' + node.__class__.__name__)
+
+    @staticmethod
+    def prev_node(node):
+        if not node.parent:
+            return ''
+        index = node.parent.index(node)
+        if index <= 0:
+            return ''
+        return node.parent[index - 1].astext() or ''

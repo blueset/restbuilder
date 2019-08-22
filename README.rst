@@ -8,10 +8,14 @@ Changes:
 * Add support to links with inline references.
 * Fix for dealing trailing spaces in literal emphasis
 
-Changes are adapted from steinwurf_ and fritzlabs_.
+Above changes are adapted from steinwurf_ and fritzlabs_.
 
 .. _steinwurf: https://github.com/steinwurf/restbuilder
 .. _fritzlabs: https://github.com/fritzlabs/restbuilder
+
+* Let indentation size of items to follow its starting marker size.
+* Let length of heading to adapt CJK length of strings too
+* Escape empty space when a text style or link is directly next to other text.
 
 =======================
 README for reST Builder
