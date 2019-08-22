@@ -97,6 +97,7 @@ class RstTranslator(TextTranslator):
         width = MAXWIDTH - (
             maxindent if not first else column_width(first)
             )
+        print("\nend-state -----\n", content)
         result = []
         toformat = []
 
@@ -797,19 +798,22 @@ class RstTranslator(TextTranslator):
         format.
         """
         prev_node = self.prev_node(node)
-        if self.end_with_text.search(prev_node):
-            self.add_text('\ ')
+        escape_start = self.end_with_text.search(prev_node)
         next_node = node.next_node(descend=False, siblings=True)
         escape_end = next_node and self.starts_with_text.match(next_node.astext())
         if 'refid' in node and 'internal' in node:
             # Here we use the approach shown here:
             # https://stackoverflow.com/a/34991777/1717320
+            if escape_start:
+                self.add_text('\ ')
             self.add_text('`{} <{}_>`_'.format(node.astext(), node['refid']))
             if escape_end:
                 self.add_text('\ ')
             raise nodes.SkipNode
 
         elif 'refuri' not in node:
+            if escape_start:
+                self.add_text('\ ')
             self.add_text('`%s`_' % node['name'])
             if escape_end:
                 self.add_text('\ ')
@@ -822,6 +826,8 @@ class RstTranslator(TextTranslator):
             # get to the visit_image handler.
             pass
         elif 'internal' not in node:
+            if escape_start:
+                self.add_text('\ ')
             if 'name' in node:
                 self.add_text('`%s <%s>`_' % (node['name'], node['refuri']))
             else:
@@ -830,6 +836,8 @@ class RstTranslator(TextTranslator):
                 self.add_text('\ ')
             raise nodes.SkipNode
         elif 'reftitle' in node:
+            if escape_start:
+                self.add_text('\ ')
             # Include node as text, rather than with markup.
             # reST seems unable to parse a construct like ` ``literal`` <url>`_
             # Hence we revert to the more simple `literal <url>`_
@@ -839,6 +847,8 @@ class RstTranslator(TextTranslator):
                 self.add_text('\ ')
             raise nodes.SkipNode
         else:
+            if escape_start:
+                self.add_text('\ ')
             self.add_text('`%s <%s>`_' % (node.astext(), node['refuri']))
             if escape_end:
                 self.add_text('\ ')
