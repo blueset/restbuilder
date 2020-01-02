@@ -696,7 +696,7 @@ class RstTranslator(TextTranslator):
 
     def visit_literal_block(self, node):
         # import pdb; pdb.set_trace()
-        if node['lanugage'] != "default":
+        if node.get('lanugage', 'default') != "default":
             self.add_text(".. code:: " + node['language'])
         else:
             self.add_text("::")
